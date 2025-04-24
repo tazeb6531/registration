@@ -1,23 +1,11 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import socket
 import os
 
 # ✅ Must be first Streamlit command
 st.set_page_config(page_title="NCTT LLC")
-
-# 🔵 Background styling
-st.markdown(
-    """
-    <style>
-        .stApp {
-            background-color: #e6f0ff;
-            padding: 2rem;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # 🖼️ Logo and title on same row
 col1, col2 = st.columns([1, 4])
@@ -31,33 +19,36 @@ DATA_FILE = "timesheet.csv"
 if os.path.exists(DATA_FILE):
     df = pd.read_csv(DATA_FILE)
 else:
-    df = pd.DataFrame(columns=["Name", "Action", "Date", "Time"])
+    df = pd.DataFrame(columns=["Name", "Action", "Date", "Time", "IP"])
 
-# 👤 User input
-name = st.text_input("Enter your name:")
-st.markdown("### Select Action:")
+# 📝 Form input
+with st.form("entry_form", clear_on_submit=True):
+    st.markdown("<h4>Enter your name:</h4>", unsafe_allow_html=True)
+    name = st.text_input(label="", placeholder="Your name here")
+    st.markdown("### Select Action:")
 
-col1, col2, col3, col4 = st.columns(4)
-action = None
+    col1, col2, col3, col4 = st.columns(4)
+    action = st.radio(
+        "Action",
+        ["Sign In", "Sign Out", "Lunch Break Out", "Lunch Break In"],
+        label_visibility="collapsed",
+        horizontal=True
+    )
 
-if col1.button("Sign In"):
-    action = "Sign In"
-elif col2.button("Sign Out"):
-    action = "Sign Out"
-elif col3.button("Lunch Break Out"):
-    action = "Lunch Break Out"
-elif col4.button("Lunch Break In"):
-    action = "Lunch Break In"
+    submitted = st.form_submit_button("Submit")
 
-# ✅ Save to CSV
-if action and name:
+# ✅ Save data if submitted
+if submitted and name:
     now = datetime.now()
     date = now.strftime("%Y-%m-%d")
-    time = now.strftime("%I:%M:%S %p")  # 12-hour format
+    time = now.strftime("%I:%M:%S %p")
+    ip_address = socket.gethostbyname(socket.gethostname())  # Get computer IP
 
-    new_row = pd.DataFrame([[name, action, date, time]], columns=["Name", "Action", "Date", "Time"])
+    new_row = pd.DataFrame([[name, action, date, time, ip_address]],
+                           columns=["Name", "Action", "Date", "Time", "IP"])
     df = pd.concat([df, new_row], ignore_index=True)
     df.to_csv(DATA_FILE, index=False)
+
     st.success(f"{action} recorded at {time} on {date}")
 
 # 📅 Timesheet display
