@@ -35,7 +35,7 @@ else:
 
 # 📝 Form input
 with st.form("entry_form", clear_on_submit=True):
-    st.markdown("<h4>Enter Your First and Last Name:</h4>", unsafe_allow_html=True)
+    st.markdown("<h4>Enter your First and last name:</h4>", unsafe_allow_html=True)
     first_name = st.text_input(label="First Name")
     last_name = st.text_input(label="Last Name")
     st.markdown("### Select Action:")
