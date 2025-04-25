@@ -16,7 +16,7 @@ class TimesheetApp:
         with col1:
             st.image("logo.png", width=80)
         with col2:
-            st.markdown("<h1 style='padding-top: 20px;'> NCTT LLC </h1>", unsafe_allow_html=True)
+            st.markdown("<h1 style='padding-top: 20px;'> NCTT LLC ggg</h1>", unsafe_allow_html=True)
 
     def load_data(self):
         if os.path.exists(self.DATA_FILE):
