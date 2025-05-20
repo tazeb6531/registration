@@ -4,19 +4,55 @@ import os
 import smtplib
 from email.message import EmailMessage
 
-# Setup
+# Constants
 DATA_FILE = "registration.xlsx"
 COLUMNS = ["First Name", "Last Name", "Interest of Training"]
 
-# Load or create the data file
-if os.path.exists(DATA_FILE):
-    df = pd.read_excel(DATA_FILE)
-    df = df.reindex(columns=COLUMNS, fill_value="")
-else:
-    df = pd.DataFrame(columns=COLUMNS)
-    df.to_excel(DATA_FILE, index=False)
+# Ensure Excel backend is available
+EXCEL_ENGINE = "openpyxl"
 
-# UI
+# Load or initialize the Excel file
+def load_data():
+    if os.path.exists(DATA_FILE):
+        try:
+            df = pd.read_excel(DATA_FILE, engine=EXCEL_ENGINE)
+            df = df.reindex(columns=COLUMNS, fill_value="")
+        except Exception as e:
+            st.error(f"Error loading Excel file: {e}")
+            df = pd.DataFrame(columns=COLUMNS)
+    else:
+        df = pd.DataFrame(columns=COLUMNS)
+        df.to_excel(DATA_FILE, index=False, engine=EXCEL_ENGINE)
+    return df
+
+# Save DataFrame to Excel
+def save_data(df):
+    df.to_excel(DATA_FILE, index=False, engine=EXCEL_ENGINE)
+
+# Send email with Excel attachment
+def send_email(first, last, interest):
+    try:
+        email = st.secrets["gmail"]["email"]
+        password = st.secrets["gmail"]["password"]
+
+        msg = EmailMessage()
+        msg.set_content(f"New Registration:\nFirst Name: {first}\nLast Name: {last}\nInterest: {interest}")
+        msg["Subject"] = "New Training Registration (Excel Attached)"
+        msg["From"] = email
+        msg["To"] = email
+
+        with open(DATA_FILE, "rb") as f:
+            file_data = f.read()
+            msg.add_attachment(file_data, maintype="application", subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename=DATA_FILE)
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(email, password)
+            smtp.send_message(msg)
+
+    except Exception as e:
+        st.error(f"Email sending failed: {e}")
+
+# Streamlit UI
 st.set_page_config(page_title="NCTT LLC - Registration")
 col1, col2 = st.columns([1, 4])
 with col1:
@@ -24,7 +60,10 @@ with col1:
 with col2:
     st.markdown("<h1 style='padding-top: 20px;'>Dallas MK Training Registration</h1>", unsafe_allow_html=True)
 
-# Form
+# Load data
+df = load_data()
+
+# Form UI
 with st.form("registration_form", clear_on_submit=True):
     first = st.text_input("First Name")
     last = st.text_input("Last Name")
@@ -32,30 +71,12 @@ with st.form("registration_form", clear_on_submit=True):
     submitted = st.form_submit_button("Register")
 
 # Handle form submission
-if submitted and first and last and interest:
-    new_row = pd.DataFrame([[first, last, interest]], columns=COLUMNS)
-    df = pd.concat([df, new_row], ignore_index=True)
-    df.to_excel(DATA_FILE, index=False)
-    st.success(f"Thank you {first} {last} for registering!")
-
-    # Send Email with Excel attachment
-    email = st.secrets["gmail"]["email"]
-    password = st.secrets["gmail"]["password"]
-
-    msg = EmailMessage()
-    msg.set_content(f"New Registration:\nFirst Name: {first}\nLast Name: {last}\nInterest of Training: {interest}")
-    msg['Subject'] = "New Training Registration (Excel Attached)"
-    msg['From'] = email
-    msg['To'] = email
-
-    # Attach the Excel file
-    with open(DATA_FILE, 'rb') as f:
-        file_data = f.read()
-        file_name = os.path.basename(DATA_FILE)
-    msg.add_attachment(file_data, maintype='application', subtype='vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename=file_name)
-
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
-        smtp.login(email, password)
-        smtp.send_message(msg)
-
-# (No display of registration list anymore)
+if submitted:
+    if first and last and interest:
+        new_row = pd.DataFrame([[first, last, interest]], columns=COLUMNS)
+        df = pd.concat([df, new_row], ignore_index=True)
+        save_data(df)
+        st.success(f"Thank you {first} {last} for registering!")
+        send_email(first, last, interest)
+    else:
+        st.warning("Please fill in all fields.")
