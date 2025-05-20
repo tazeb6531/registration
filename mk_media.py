@@ -7,8 +7,6 @@ from email.message import EmailMessage
 # Constants
 DATA_FILE = "registration.xlsx"
 COLUMNS = ["First Name", "Last Name", "Interest of Training"]
-
-# Ensure Excel backend is available
 EXCEL_ENGINE = "openpyxl"
 
 # Load or initialize the Excel file
@@ -27,9 +25,12 @@ def load_data():
 
 # Save DataFrame to Excel
 def save_data(df):
-    df.to_excel(DATA_FILE, index=False, engine=EXCEL_ENGINE)
+    try:
+        df.to_excel(DATA_FILE, index=False, engine=EXCEL_ENGINE)
+    except Exception as e:
+        st.error(f"Error saving Excel file: {e}")
 
-# Send email with Excel attachment
+# Send email with Excel file
 def send_email(first, last, interest):
     try:
         email = st.secrets["gmail"]["email"]
@@ -43,7 +44,9 @@ def send_email(first, last, interest):
 
         with open(DATA_FILE, "rb") as f:
             file_data = f.read()
-            msg.add_attachment(file_data, maintype="application", subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename=DATA_FILE)
+            msg.add_attachment(file_data, maintype="application",
+                               subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               filename=DATA_FILE)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(email, password)
@@ -60,17 +63,16 @@ with col1:
 with col2:
     st.markdown("<h1 style='padding-top: 20px;'>Dallas MK Training Registration</h1>", unsafe_allow_html=True)
 
-# Load data
+# Load existing data
 df = load_data()
 
-# Form UI
+# Form for registration
 with st.form("registration_form", clear_on_submit=True):
     first = st.text_input("First Name")
     last = st.text_input("Last Name")
     interest = st.text_input("Interest of Training (Journalist / Camera / Editing)")
     submitted = st.form_submit_button("Register")
 
-# Handle form submission
 if submitted:
     if first and last and interest:
         new_row = pd.DataFrame([[first, last, interest]], columns=COLUMNS)
